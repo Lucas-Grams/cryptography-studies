@@ -1,23 +1,25 @@
 package org.example;
 
-import javax.crypto.Cipher;
-import java.io.InputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.io.InputStream;
+import javax.crypto.Cipher;
+import java.math.BigInteger;
+import java.net.ServerSocket;
+import java.io.ObjectInputStream;
+import java.security.SecureRandom;
+import java.io.ObjectOutputStream;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Bob {
     public static void main(String[] args) {
         try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
-            KeyPair keyPair = keyPairGenerator.generateKeyPair();
-            PrivateKey privateKey = keyPair.getPrivate();
-            PublicKey publicKey = keyPair.getPublic();
+            BigInteger[] qa = Util.geraQA(512);
+            BigInteger q = qa[0];
+            BigInteger a = qa[1];
+
+            SecureRandom random = new SecureRandom();
+            BigInteger bobPrivateKey = new BigInteger(q.bitLength(), random);
+            BigInteger bobPublicKey = Util.power(a, bobPrivateKey, q);
 
             ServerSocket serverSocket = new ServerSocket(3333);
             System.out.println("Aguardando conexão...");
@@ -25,14 +27,22 @@ public class Bob {
             System.out.println("Conexão estabelecida!");
 
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
-            objectOutputStream.writeObject(publicKey);
+            objectOutputStream.writeObject(qa);
+            objectOutputStream.writeObject(bobPublicKey);
+
+            ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
+            BigInteger alicePublicKey = (BigInteger) objectInputStream.readObject();
+
+            BigInteger sharedSecret = Util.power(alicePublicKey, bobPrivateKey, q);
+            byte[] sharedSecretBytes = sharedSecret.toByteArray();
+            SecretKeySpec aesKey = new SecretKeySpec(sharedSecretBytes, 0, 16, "AES");
 
             InputStream inputStream = socket.getInputStream();
             byte[] encryptedData = inputStream.readAllBytes();
 
-            Cipher cipherRSA = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-            cipherRSA.init(Cipher.DECRYPT_MODE, privateKey);
-            byte[] decryptedData = cipherRSA.doFinal(encryptedData);
+            Cipher cipherAES = Cipher.getInstance("AES");
+            cipherAES.init(Cipher.DECRYPT_MODE, aesKey);
+            byte[] decryptedData = cipherAES.doFinal(encryptedData);
 
             System.out.println("Arquivo recebido: " + new String(decryptedData));
 

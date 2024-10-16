@@ -1,11 +1,13 @@
 package org.example;
 
-import javax.crypto.Cipher;
-import javax.swing.*;
-import java.awt.*;
 import java.io.*;
+import java.awt.*;
+import javax.swing.*;
 import java.net.Socket;
-import java.security.PublicKey;
+import javax.crypto.Cipher;
+import java.math.BigInteger;
+import java.security.SecureRandom;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Alice {
     public static void main(String[] args) {
@@ -23,12 +25,24 @@ public class Alice {
                 System.out.println("Conexão estabelecida!");
 
                 ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
-                PublicKey publicKey = (PublicKey) objectInputStream.readObject();
+                BigInteger[] qa = (BigInteger[]) objectInputStream.readObject();
+                BigInteger q = qa[0];
+                BigInteger a = qa[1];
+                BigInteger bobPublicKey = (BigInteger) objectInputStream.readObject();
 
-                System.out.println("Arquivo selecionado: " + fileChooser.getSelectedFile().getName());
+                SecureRandom random = new SecureRandom();
+                BigInteger alicePrivateKey = new BigInteger(q.bitLength(), random);
+                BigInteger alicePublicKey = Util.power(a, alicePrivateKey, q);
 
-                Cipher cipherAES = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-                cipherAES.init(Cipher.ENCRYPT_MODE, publicKey);
+                ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
+                objectOutputStream.writeObject(alicePublicKey);
+
+                BigInteger sharedSecret = Util.power(bobPublicKey, alicePrivateKey, q);
+                byte[] sharedSecretBytes = sharedSecret.toByteArray();
+                SecretKeySpec aesKey = new SecretKeySpec(sharedSecretBytes, 0, 16, "AES");
+
+                Cipher cipherAES = Cipher.getInstance("AES");
+                cipherAES.init(Cipher.ENCRYPT_MODE, aesKey);
                 byte[] encryptedData = cipherAES.doFinal(data);
 
                 OutputStream outputStream = socket.getOutputStream();

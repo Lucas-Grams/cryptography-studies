@@ -1,17 +1,17 @@
 package org.example;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import javax.crypto.SecretKey;
 import java.io.Serializable;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class ObjetoTroca implements Serializable {
 
     private String nomeArquivo;
@@ -19,3 +19,4 @@ public class ObjetoTroca implements Serializable {
     private SecretKey keyEAS;
 
 }
+

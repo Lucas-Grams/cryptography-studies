@@ -5,8 +5,8 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import javax.crypto.SecretKey;
 import java.io.Serializable;
+import javax.crypto.SecretKey;
 
 @Data
 @Builder

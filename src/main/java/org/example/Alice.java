@@ -15,6 +15,7 @@ public class Alice {
         System.out.println("Selecionando arquivo");
 
         try {
+                //Selecionando o arquivo:
             if (fileChooser.showDialog(new Frame(), "Selecionar") == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
                 FileInputStream fileInputStream = new FileInputStream(file);
@@ -22,7 +23,7 @@ public class Alice {
                 fileInputStream.read(data);
                 System.out.println("Arquivo lido com sucesso");
 
-                // Generate key pair for Alice
+                // Gerando par de chaves RSA:
                 KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
                 keyGen.initialize(2048);
                 KeyPair keyPair = keyGen.generateKeyPair();
@@ -30,13 +31,14 @@ public class Alice {
                 PublicKey publicKey = keyPair.getPublic();
                 System.out.println("Par de chaves RSA gerado");
 
-                // Sign the data
+                // Assinando a mensagem:
                 Signature assinatura = Signature.getInstance("SHA256withRSA");
                 assinatura.initSign(privateKey);
                 assinatura.update(data);
                 byte[] digitalSignature = assinatura.sign();
                 System.out.println("Assinatura digital gerada");
 
+                //Conectando ao servidor de Bob
                 Socket socket = new Socket("localhost", 3333);
                 System.out.println("Conexão estabelecida!");
 
@@ -47,22 +49,26 @@ public class Alice {
                 BigInteger bobPublicKey = (BigInteger) objectInputStream.readObject();
                 System.out.println("Chaves públicas recebidas de Bob");
 
+                //Gerando chave pública de Alice
                 SecureRandom random = new SecureRandom();
                 BigInteger alicePrivateKey = new BigInteger(q.bitLength(), random);
                 BigInteger alicePublicKey = Util.power(a, alicePrivateKey, q);
                 System.out.println("Chave pública de Alice gerada");
 
+                //Enviando dados para Bob
                 ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
                 objectOutputStream.writeObject(alicePublicKey);
                 objectOutputStream.writeObject(publicKey); // Send Alice's public key
                 objectOutputStream.writeObject(digitalSignature); // Send the digital assinatura
                 System.out.println("Chave pública e assinatura digital enviadas para Bob");
 
+                //Gerando chave secreta compartilhada
                 BigInteger sharedSecret = Util.power(bobPublicKey, alicePrivateKey, q);
                 byte[] sharedSecretBytes = sharedSecret.toByteArray();
                 SecretKeySpec aesKey = new SecretKeySpec(sharedSecretBytes, 0, 16, "AES");
                 System.out.println("Chave secreta compartilhada gerada");
 
+                //Criptografando e enviando os dados
                 Cipher cipherAES = Cipher.getInstance("AES");
                 cipherAES.init(Cipher.ENCRYPT_MODE, aesKey);
                 byte[] encryptedData = cipherAES.doFinal(data);
@@ -73,6 +79,7 @@ public class Alice {
                 outputStream.flush();
                 System.out.println("Arquivo enviado!");
 
+                //Fechando conexão
                 socket.close();
             }
         } catch (Exception e) {
